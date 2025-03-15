@@ -1,52 +1,99 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { ArrowRight, CheckCircle, Clock, FileText, XCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  FileText,
+  XCircle,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Claim } from "@/lib/types"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import type { Claim } from "@/lib/types";
 
 export default function InsurerDashboard() {
-  const router = useRouter()
-  const [claims, setClaims] = useState<Claim[]>([])
-  const [loading, setLoading] = useState(true)
+  const router = useRouter();
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchClaims()
-  }, [])
+    fetchClaims();
+  }, []);
 
   const fetchClaims = async () => {
     try {
-      const response = await fetch("/api/claims")
+      setLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Authorization token not found. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(
+        "https://claims-management-platform.onrender.com/api/claims",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // Passing the Bearer token
+          },
+        }
+      );
+
       if (response.ok) {
-        const data = await response.json()
-        setClaims(data)
+        const data = await response.json();
+        setClaims(data);
+      } else {
+        const errorMessage = await response.text();
+        setError(errorMessage || "Failed to fetch claims");
       }
     } catch (error) {
-      console.error("Error fetching claims:", error)
+      console.error("Error fetching claims:", error);
+      setError("An unexpected error occurred. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
-    return <div>Loading dashboard...</div>
+    return <div>Loading dashboard...</div>;
   }
 
-  const pendingClaims = claims.filter((claim) => claim.status === "pending")
-  const approvedClaims = claims.filter((claim) => claim.status === "approved")
-  const rejectedClaims = claims.filter((claim) => claim.status === "rejected")
+  const pendingClaims = claims.filter((claim) => claim.status === "pending");
+  const approvedClaims = claims.filter((claim) => claim.status === "approved");
+  const rejectedClaims = claims.filter((claim) => claim.status === "rejected");
 
-  const totalClaimAmount = claims.reduce((sum, claim) => sum + claim.claimAmount, 0)
-  const totalApprovedAmount = approvedClaims.reduce((sum, claim) => sum + (claim.approvedAmount || 0), 0)
+  const totalClaimAmount = claims.reduce(
+    (sum, claim) => sum + claim.claimAmount,
+    0
+  );
+  const totalApprovedAmount = approvedClaims.reduce(
+    (sum, claim) => sum + (claim.approvedAmount || 0),
+    0
+  );
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Insurer Dashboard</h2>
-        <p className="text-muted-foreground">Overview of all claims in the system</p>
+        <p className="text-muted-foreground">
+          Overview of all claims in the system
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -99,14 +146,22 @@ export default function InsurerDashboard() {
               <p className="text-muted-foreground">No pending claims</p>
             ) : (
               pendingClaims.slice(0, 3).map((claim) => (
-                <div key={claim.id} className="flex items-center justify-between border-b pb-2">
+                <div
+                  key={claim.id}
+                  className="flex items-center justify-between border-b pb-2"
+                >
                   <div>
                     <p className="font-medium">{claim.patientName}</p>
                     <p className="text-sm text-muted-foreground">
-                      ${claim.claimAmount.toFixed(2)} - {new Date(claim.submissionDate).toLocaleDateString()}
+                      ${claim.claimAmount.toFixed(2)} -{" "}
+                      {new Date(claim.submissionDate).toLocaleDateString()}
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => router.push(`/insurer/claims/${claim.id}`)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push(`/insurer/claims/${claim.id}`)}
+                  >
                     Review
                   </Button>
                 </div>
@@ -114,7 +169,11 @@ export default function InsurerDashboard() {
             )}
           </CardContent>
           <CardFooter>
-            <Button variant="outline" className="w-full" onClick={() => router.push("/insurer/claims?status=pending")}>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => router.push("/insurer/claims?status=pending")}
+            >
               View All Pending Claims
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -128,23 +187,38 @@ export default function InsurerDashboard() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Total Claimed Amount</span>
-                <span className="font-bold">${totalClaimAmount.toFixed(2)}</span>
+                <span className="text-sm font-medium">
+                  Total Claimed Amount
+                </span>
+                <span className="font-bold">
+                  ${totalClaimAmount.toFixed(2)}
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Total Approved Amount</span>
-                <span className="font-bold">${totalApprovedAmount.toFixed(2)}</span>
+                <span className="text-sm font-medium">
+                  Total Approved Amount
+                </span>
+                <span className="font-bold">
+                  ${totalApprovedAmount.toFixed(2)}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Approval Rate</span>
                 <span className="font-bold">
-                  {claims.length > 0 ? `${Math.round((approvedClaims.length / claims.length) * 100)}%` : "N/A"}
+                  {claims.length > 0
+                    ? `${Math.round(
+                        (approvedClaims.length / claims.length) * 100
+                      )}%`
+                    : "N/A"}
                 </span>
               </div>
             </div>
           </CardContent>
           <CardFooter>
-            <Button className="w-full" onClick={() => router.push("/insurer/claims")}>
+            <Button
+              className="w-full"
+              onClick={() => router.push("/insurer/claims")}
+            >
               View All Claims
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -152,6 +226,5 @@ export default function InsurerDashboard() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
-

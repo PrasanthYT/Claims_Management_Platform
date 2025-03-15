@@ -38,3 +38,33 @@ exports.updateClaim = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+const jwt = require("jsonwebtoken");
+
+// Get claims by user ID from JWT token
+exports.getUserClaims = async (req, res) => {
+    try {
+        // Extract the token from the Authorization header
+        const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
+
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized: No token provided" });
+        }
+
+        // Verify the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userEmail = decoded.email; // Assuming JWT payload contains email
+
+        // Find claims for this user
+        const userClaims = await Claim.find({ email: userEmail });
+
+        if (!userClaims.length) {
+            return res.status(404).json({ message: "No claims found for this user" });
+        }
+
+        res.status(200).json(userClaims);
+    } catch (error) {
+        console.error("Error fetching user claims:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
