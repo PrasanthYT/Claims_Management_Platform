@@ -1,126 +1,176 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { CheckCircle, Clock, Search, XCircle } from "lucide-react"
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CheckCircle, Clock, Search, XCircle } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { Claim, ClaimStatus } from "@/lib/types"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Claim, ClaimStatus } from "@/lib/types";
 
 export default function InsurerClaimsPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [claims, setClaims] = useState<Claim[]>([])
-  const [filteredClaims, setFilteredClaims] = useState<Claim[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<ClaimStatus | "all">("all")
-  const [activeTab, setActiveTab] = useState("all")
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [filteredClaims, setFilteredClaims] = useState<Claim[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ClaimStatus | "all">("all");
+  const [activeTab, setActiveTab] = useState("all");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchClaims()
+    fetchClaims();
 
     // Set initial status filter from URL if present
-    const status = searchParams.get("status")
+    const status = searchParams.get("status");
     if (status && ["pending", "approved", "rejected"].includes(status)) {
-      setStatusFilter(status as ClaimStatus)
-      setActiveTab(status)
+      setStatusFilter(status as ClaimStatus);
+      setActiveTab(status);
     }
-  }, [searchParams])
+  }, [searchParams]);
 
   useEffect(() => {
-    filterClaims()
-  }, [claims, searchTerm, statusFilter])
+    filterClaims();
+  }, [claims, searchTerm, statusFilter]);
 
   const fetchClaims = async () => {
     try {
-      const response = await fetch("/api/claims")
+      setLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Authorization token not found. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(
+        "https://claims-management-platform.onrender.com/api/claims",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // Passing the Bearer token
+          },
+        }
+      );
+
       if (response.ok) {
-        const data = await response.json()
-        setClaims(data)
-        setFilteredClaims(data)
+        const data = await response.json();
+        setClaims(data);
+      } else {
+        const errorMessage = await response.text();
+        setError(errorMessage || "Failed to fetch claims");
       }
     } catch (error) {
-      console.error("Error fetching claims:", error)
+      console.error("Error fetching claims:", error);
+      setError("An unexpected error occurred. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const filterClaims = () => {
-    let filtered = [...claims]
+    let filtered = [...claims];
 
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
         (claim) =>
           claim.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          claim.description.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
+          claim.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
 
     // Filter by status
     if (statusFilter !== "all") {
-      filtered = filtered.filter((claim) => claim.status === statusFilter)
+      filtered = filtered.filter((claim) => claim.status === statusFilter);
     }
 
-    setFilteredClaims(filtered)
-  }
+    setFilteredClaims(filtered);
+  };
 
   const getStatusBadge = (status: ClaimStatus) => {
     switch (status) {
       case "pending":
         return (
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+          <Badge
+            variant="outline"
+            className="bg-amber-50 text-amber-700 border-amber-200"
+          >
             Pending
           </Badge>
-        )
+        );
       case "approved":
         return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <Badge
+            variant="outline"
+            className="bg-green-50 text-green-700 border-green-200"
+          >
             Approved
           </Badge>
-        )
+        );
       case "rejected":
         return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200"
+          >
             Rejected
           </Badge>
-        )
+        );
     }
-  }
+  };
 
   const getStatusIcon = (status: ClaimStatus) => {
     switch (status) {
       case "pending":
-        return <Clock className="h-5 w-5 text-amber-500" />
+        return <Clock className="h-5 w-5 text-amber-500" />;
       case "approved":
-        return <CheckCircle className="h-5 w-5 text-green-500" />
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
       case "rejected":
-        return <XCircle className="h-5 w-5 text-red-500" />
+        return <XCircle className="h-5 w-5 text-red-500" />;
     }
-  }
+  };
 
   if (loading) {
-    return <div>Loading claims...</div>
+    return <div>Loading claims...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Claims Management</h2>
-        <p className="text-muted-foreground">Review and process all submitted claims</p>
+        <p className="text-muted-foreground">
+          Review and process all submitted claims
+        </p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>All Claims</CardTitle>
-          <CardDescription>There are {claims.length} claims in the system</CardDescription>
+          <CardDescription>
+            There are {claims.length} claims in the system
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -137,7 +187,12 @@ export default function InsurerClaimsPage() {
               </div>
             </div>
             <div>
-              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ClaimStatus | "all")}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) =>
+                  setStatusFilter(value as ClaimStatus | "all")
+                }
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -164,25 +219,31 @@ export default function InsurerClaimsPage() {
             </TabsContent>
 
             <TabsContent value="pending" className="space-y-4">
-              {renderClaimsList(filteredClaims.filter((claim) => claim.status === "pending"))}
+              {renderClaimsList(
+                filteredClaims.filter((claim) => claim.status === "pending")
+              )}
             </TabsContent>
 
             <TabsContent value="approved" className="space-y-4">
-              {renderClaimsList(filteredClaims.filter((claim) => claim.status === "approved"))}
+              {renderClaimsList(
+                filteredClaims.filter((claim) => claim.status === "approved")
+              )}
             </TabsContent>
 
             <TabsContent value="rejected" className="space-y-4">
-              {renderClaimsList(filteredClaims.filter((claim) => claim.status === "rejected"))}
+              {renderClaimsList(
+                filteredClaims.filter((claim) => claim.status === "rejected")
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 
   function renderClaimsList(claims: Claim[]) {
     if (claims.length === 0) {
-      return <p className="text-muted-foreground">No claims found</p>
+      return <p className="text-muted-foreground">No claims found</p>;
     }
 
     return claims.map((claim) => (
@@ -205,23 +266,33 @@ export default function InsurerClaimsPage() {
 
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Amount:</span>
-                <span className="font-medium">${claim.claimAmount.toFixed(2)}</span>
+                <span className="font-medium">
+                  ${claim.claimAmount.toFixed(2)}
+                </span>
               </div>
 
               {claim.approvedAmount !== undefined && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Approved:</span>
-                  <span className="font-medium">${claim.approvedAmount.toFixed(2)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Approved:
+                  </span>
+                  <span className="font-medium">
+                    ${claim.approvedAmount.toFixed(2)}
+                  </span>
                 </div>
               )}
 
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Date:</span>
-                <span>{new Date(claim.submissionDate).toLocaleDateString()}</span>
+                <span>
+                  {new Date(claim.submissionDate).toLocaleDateString()}
+                </span>
               </div>
 
               <div className="mt-2">
-                <span className="text-sm text-muted-foreground">Description:</span>
+                <span className="text-sm text-muted-foreground">
+                  Description:
+                </span>
                 <p className="mt-1">{claim.description}</p>
               </div>
             </div>
@@ -247,7 +318,6 @@ export default function InsurerClaimsPage() {
           )}
         </div>
       </Card>
-    ))
+    ));
   }
 }
-
