@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   CheckCircle,
@@ -8,7 +9,6 @@ import {
   XCircle,
   FileText,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -49,12 +49,12 @@ export default function PatientDashboard() {
       }
 
       const response = await fetch(
-        "https://claims-management-platform.onrender.com/api/claims",
+        "https://localhost:5000/api/claims/my-claims",
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Passing the Bearer token
+            Authorization: `Bearer ${token}`, // Sending JWT token
           },
         }
       );
@@ -78,9 +78,9 @@ export default function PatientDashboard() {
     return <div>Loading dashboard...</div>;
   }
 
-  const pendingClaims = claims.filter((claim) => claim.status === "pending");
-  const approvedClaims = claims.filter((claim) => claim.status === "approved");
-  const rejectedClaims = claims.filter((claim) => claim.status === "rejected");
+  const pendingClaims = claims.filter((claim) => claim.status === "Pending");
+  const approvedClaims = claims.filter((claim) => claim.status === "Approved");
+  const rejectedClaims = claims.filter((claim) => claim.status === "Rejected");
 
   const totalApproved = approvedClaims.reduce(
     (sum, claim) => sum + (claim.approvedAmount || 0),
@@ -96,9 +96,11 @@ export default function PatientDashboard() {
         </p>
       </div>
 
+      {error && <div className="text-red-500">{error}</div>}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Claims</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -107,7 +109,7 @@ export default function PatientDashboard() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Pending</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -116,7 +118,7 @@ export default function PatientDashboard() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Approved</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -125,7 +127,7 @@ export default function PatientDashboard() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Rejected</CardTitle>
             <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -149,29 +151,27 @@ export default function PatientDashboard() {
             ) : (
               claims.slice(0, 3).map((claim) => (
                 <div
-                  key={claim.id}
+                  key={claim._id}
                   className="flex items-center justify-between border-b pb-2"
                 >
                   <div>
-                    <p className="font-medium">
-                      ${claim.claimAmount.toFixed(2)}
-                    </p>
+                    <p className="font-medium">${claim.claimAmount.toFixed(2)}</p>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(claim.submissionDate).toLocaleDateString()}
+                      {new Date(claim.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="flex items-center">
-                    {claim.status === "pending" && (
+                    {claim.status === "Pending" && (
                       <span className="flex items-center text-amber-500">
                         <Clock className="mr-1 h-4 w-4" /> Pending
                       </span>
                     )}
-                    {claim.status === "approved" && (
+                    {claim.status === "Approved" && (
                       <span className="flex items-center text-green-500">
                         <CheckCircle className="mr-1 h-4 w-4" /> Approved
                       </span>
                     )}
-                    {claim.status === "rejected" && (
+                    {claim.status === "Rejected" && (
                       <span className="flex items-center text-red-500">
                         <XCircle className="mr-1 h-4 w-4" /> Rejected
                       </span>
@@ -200,20 +200,14 @@ export default function PatientDashboard() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">
-                  Total Approved Amount
-                </span>
+                <span className="text-sm font-medium">Total Approved Amount</span>
                 <span className="font-bold">${totalApproved.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">
-                  Average Approval Rate
-                </span>
+                <span className="text-sm font-medium">Approval Rate</span>
                 <span className="font-bold">
                   {claims.length > 0
-                    ? `${Math.round(
-                        (approvedClaims.length / claims.length) * 100
-                      )}%`
+                    ? `${Math.round((approvedClaims.length / claims.length) * 100)}%`
                     : "N/A"}
                 </span>
               </div>
