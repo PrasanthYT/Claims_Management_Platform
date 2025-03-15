@@ -58,7 +58,7 @@ export default function PatientClaimsPage() {
       }
 
       const response = await fetch(
-        "https://claims-management-platform.onrender.com/api/claims/my-claims",
+        "https://localhost:5000/api/claims/my-claims",
         {
           method: "GET",
           headers: {

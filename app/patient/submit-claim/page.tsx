@@ -37,42 +37,39 @@ export default function SubmitClaimPage() {
     try {
       const formData = new FormData(e.target as HTMLFormElement);
 
-      const claimData = {
-        name: formData.get("name") as string,
-        email: user?.email || "", // Ensure email is always included
-        claimAmount: Number(formData.get("amount")), // Ensure correct data type
-        description: formData.get("description") as string,
-      };
-
       // Retrieve the token from localStorage
       const token = localStorage.getItem("token");
-
       if (!token) {
         setError("Authorization token not found. Please log in again.");
         setLoading(false);
         return;
       }
 
-      const response = await fetch(
-        "https://claims-management-platform.onrender.com/api/claims",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Include Bearer token
-          },
-          body: JSON.stringify(claimData),
-        }
-      );
+      // Send only user ID instead of full email/name (if your backend extracts from token)
+      const claimData = {
+        name: formData.get("name"),
+        email: user?.email || "",
+        claimAmount: formData.get("amount"),
+        description: formData.get("description"),
+      };
 
-      if (response.ok) {
+      const claimResponse = await fetch("http://localhost:5000/api/claims", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(claimData),
+      });
+
+      if (claimResponse.ok) {
         toast({
           title: "Claim submitted successfully",
           description: "Your claim has been submitted and is pending review.",
         });
         router.push("/patient/claims");
       } else {
-        const data = await response.json();
+        const data = await claimResponse.json();
         setError(data.error || "Failed to submit claim");
       }
     } catch (error) {
